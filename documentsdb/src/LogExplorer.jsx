@@ -452,7 +452,13 @@ export default class LogExplorer extends React.Component {
     });
 
     // inspector
-    const sel = st.selectedId ? st.docs.find((d) => d._id === st.selectedId) : null;
+    // The selected row may live in the server query results (when filtering) or
+    // in the loaded docs — look in both.
+    const sel = st.selectedId
+      ? serverDocs.find((d) => d._id === st.selectedId) ||
+        st.docs.find((d) => d._id === st.selectedId) ||
+        null
+      : null;
     const jsonLines = [];
     const aggActions = [];
     if (sel) {
