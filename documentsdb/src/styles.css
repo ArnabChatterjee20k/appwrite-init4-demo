@@ -1,0 +1,12 @@
+html, body { margin: 0; padding: 0; background: #150f23; }
+* { box-sizing: border-box; }
+#root { height: 100vh; }
+a { color: #c2ef4e; text-decoration: underline; }
+a:hover { color: #ffffff; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #150f23; }
+::-webkit-scrollbar-thumb { background: #362d59; border-radius: 9999px; }
+@keyframes fieldIn { 0% { background: rgba(194,239,78,0.28); } 100% { background: rgba(194,239,78,0); } }
+@keyframes rowIn { 0% { background: rgba(194,239,78,0.16); } 100% { background: rgba(194,239,78,0); } }
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+textarea:focus, input:focus { outline: none; box-shadow: 0 0 0 2px rgba(157,193,245,0.5); }

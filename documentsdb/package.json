@@ -1,0 +1,19 @@
+{
+  "name": "documentsdb-log-explorer",
+  "version": "1.0.0",
+  "description": "DocumentsDB Log Explorer — schemaless document/log query UI (Bun + React)",
+  "type": "module",
+  "scripts": {
+    "gen-env": "bun run scripts/gen-env.js",
+    "setup": "bun run scripts/setup-collection.js",
+    "dev": "bun run gen-env && bun --hot server.js",
+    "start": "bun run gen-env && NODE_ENV=production bun server.js",
+    "build": "bun run gen-env && bun build ./index.html --outdir dist --minify"
+  },
+  "dependencies": {
+    "appwrite": "https://pkg.vc/-/@appwrite/appwrite@9003513",
+    "node-appwrite": "https://pkg.vc/-/@appwrite/node-appwrite@28370b6",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}
