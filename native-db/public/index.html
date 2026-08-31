@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Appwrite Postgres + Drizzle — ACID Row Locking</title>
+  <style>
+    :root {
+      --bg: #0b0b13;
+      --panel: #16161f;
+      --panel-2: #1d1d29;
+      --border: #2a2a38;
+      --text: #e8e8ef;
+      --muted: #8a8a9a;
+      --pink: #fd366e;
+      --green: #10b981;
+      --amber: #f59e0b;
+      --blue: #3b82f6;
+      --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+    }
+    header {
+      padding: 20px 24px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+    }
+    header h1 { font-size: 17px; margin: 0; font-weight: 650; }
+    header .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    .brand { color: var(--pink); }
+    .reset {
+      background: transparent; color: var(--text); border: 1px solid var(--border);
+      padding: 9px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600;
+    }
+    .reset:hover { border-color: var(--pink); color: var(--pink); }
+    main { max-width: 1100px; margin: 0 auto; padding: 24px; }
+    .panes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media (max-width: 720px) { .panes { grid-template-columns: 1fr; } }
+    .pane {
+      background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+      padding: 22px; display: flex; flex-direction: column; gap: 16px; min-height: 260px;
+    }
+    .pane h2 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
+    .pane.A .dot { background: var(--blue); }
+    .pane.B .dot { background: var(--pink); }
+    .seat {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+      padding: 18px; font-size: 14px;
+    }
+    .seat .chip {
+      font-family: var(--mono); font-weight: 700; font-size: 20px;
+      width: 44px; height: 44px; display: grid; place-items: center; border-radius: 8px;
+      background: #262635; border: 1px solid var(--border);
+    }
+    .status { font-size: 13px; color: var(--muted); min-height: 20px; line-height: 1.5; }
+    .status strong { color: var(--text); }
+    .btns { display: flex; gap: 10px; margin-top: auto; }
+    button.act {
+      flex: 1; padding: 12px; border-radius: 9px; cursor: pointer; font-size: 14px; font-weight: 650;
+      border: 1px solid transparent; transition: opacity .15s;
+    }
+    button.act:disabled { opacity: .4; cursor: not-allowed; }
+    .book { background: var(--pink); color: #fff; }
+    .confirm { background: var(--green); color: #04140d; }
+    .cancel { background: transparent; color: var(--text); border-color: var(--border); }
+    .waiting { display: flex; align-items: center; gap: 10px; color: var(--amber); font-size: 13px; font-weight: 600; }
+    .spinner {
+      width: 15px; height: 15px; border: 2px solid rgba(245,158,11,.3);
+      border-top-color: var(--amber); border-radius: 50%; animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .logwrap { margin-top: 22px; }
+    .logwrap h3 { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin: 0 0 10px; }
+    .log {
+      background: #08080e; border: 1px solid var(--border); border-radius: 12px;
+      padding: 14px 16px; font-family: var(--mono); font-size: 12.5px; line-height: 1.7;
+      height: 260px; overflow-y: auto;
+    }
+    .log .row { display: flex; gap: 10px; padding: 2px 0; }
+    .log .t { color: #55556a; flex-shrink: 0; }
+    .log .who { flex-shrink: 0; font-weight: 700; width: 64px; }
+    .who.A { color: var(--blue); } .who.B { color: var(--pink); } .who.system { color: var(--muted); }
+    .msg.action { color: #cfcfe0; }
+    .msg.lock { color: var(--green); }
+    .msg.wait { color: var(--amber); }
+    .msg.commit { color: var(--green); }
+    .msg.rollback, .msg.fail { color: #f87171; }
+    .msg.info { color: var(--muted); }
+    .empty { color: #44445a; }
+    .hint { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 16px; }
+    code { font-family: var(--mono); color: var(--pink); }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1><span class="brand">Appwrite Postgres</span> + Drizzle — ACID Row Locking</h1>
+      <div class="sub">Two users, one seat. The lock is real — Postgres does the blocking.</div>
+    </div>
+    <button class="reset" id="reset">Reset</button>
+  </header>
+
+  <main>
+    <div class="panes">
+      <section class="pane A" data-user="A">
+        <h2><span class="dot"></span> User A</h2>
+        <div class="seat"><span class="chip" data-chip>A1</span> <span data-seatlabel>Seat A1</span></div>
+        <div class="status" data-status></div>
+        <div class="btns" data-btns></div>
+      </section>
+      <section class="pane B" data-user="B">
+        <h2><span class="dot"></span> User B</h2>
+        <div class="seat"><span class="chip" data-chip>A1</span> <span data-seatlabel>Seat A1</span></div>
+        <div class="status" data-status></div>
+        <div class="btns" data-btns></div>
+      </section>
+    </div>
+
+    <div class="logwrap">
+      <h3>Transaction log</h3>
+      <div class="log" id="log"></div>
+    </div>
+    <div class="hint">
+      Press <strong>Book</strong> on one side to open a transaction and grab the row lock, then press Book on the
+      other side — it will hang until the first user presses <strong>Confirm</strong> (<code>COMMIT</code>) or
+      <strong>Cancel</strong> (<code>ROLLBACK</code>).
+    </div>
+  </main>
+
+  <script>
+    const waiting = { A: false, B: false }; // is this pane's Book request in flight & blocked?
+
+    async function api(path, user) {
+      const res = await fetch('/api/' + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user }),
+      });
+      return res.json();
+    }
+
+    async function onBook(user) {
+      waiting[user] = true;
+      render(lastState); // show spinner immediately
+      try {
+        await api('book', user); // may hang here while blocked by the other tx
+      } finally {
+        waiting[user] = false;
+        await poll();
+      }
+    }
+
+    async function onConfirm(user) { await api('confirm', user); await poll(); }
+    async function onCancel(user)  { await api('cancel', user);  await poll(); }
+
+    document.getElementById('reset').onclick = async () => {
+      waiting.A = waiting.B = false;
+      await fetch('/api/reset', { method: 'POST' });
+      await poll();
+    };
+
+    let lastState = { seat: { status: 'available' }, holders: {}, log: [] };
+
+    function render(state) {
+      lastState = state;
+      const seat = state.seat || { status: 'available' };
+      for (const user of ['A', 'B']) {
+        const pane = document.querySelector(`.pane[data-user="${user}"]`);
+        const statusEl = pane.querySelector('[data-status]');
+        const btns = pane.querySelector('[data-btns]');
+        const holdsThis = state.holders[user];
+        const booked = seat.status === 'booked';
+
+        if (waiting[user] && !holdsThis && !booked) {
+          statusEl.innerHTML = '';
+          btns.innerHTML = `<div class="waiting"><span class="spinner"></span> Waiting for the lock… (blocked by Postgres)</div>`;
+        } else if (booked) {
+          const mine = seat.bookedBy === user;
+          statusEl.innerHTML = mine
+            ? `<strong>You booked seat ${seat.label}.</strong> Committed &amp; durable.`
+            : `Seat <strong>${seat.label}</strong> was booked by User ${seat.bookedBy}.`;
+          btns.innerHTML = `<button class="act book" disabled>Book</button>`;
+        } else if (holdsThis) {
+          statusEl.innerHTML = `<strong>You hold the row lock.</strong> Your transaction is open — the other user is blocked until you decide.`;
+          btns.innerHTML =
+            `<button class="act confirm" data-a="confirm">Confirm (COMMIT)</button>` +
+            `<button class="act cancel" data-a="cancel">Cancel (ROLLBACK)</button>`;
+        } else {
+          statusEl.innerHTML = `Seat is available. Press Book to open a transaction.`;
+          btns.innerHTML = `<button class="act book" data-a="book">Book</button>`;
+        }
+
+        btns.querySelectorAll('button[data-a]').forEach((b) => {
+          const action = b.getAttribute('data-a');
+          b.onclick = () => ({ book: onBook, confirm: onConfirm, cancel: onCancel }[action](user));
+        });
+      }
+      renderLog(state.log || []);
+    }
+
+    function renderLog(entries) {
+      const el = document.getElementById('log');
+      if (!entries.length) { el.innerHTML = `<div class="empty">Waiting for the first action…</div>`; return; }
+      el.innerHTML = entries.map((e) => {
+        const t = new Date(e.ts).toLocaleTimeString('en-US', { hour12: false });
+        const who = e.actor === 'system' ? 'system' : 'User ' + e.actor;
+        return `<div class="row"><span class="t">${t}</span>` +
+               `<span class="who ${e.actor}">${who}</span>` +
+               `<span class="msg ${e.kind}">${e.message}</span></div>`;
+      }).join('');
+      el.scrollTop = el.scrollHeight;
+    }
+
+    async function poll() {
+      try {
+        const state = await (await fetch('/api/state')).json();
+        render(state);
+      } catch { /* server restarting */ }
+    }
+
+    poll();
+    setInterval(poll, 700);
+  </script>
+</body>
+</html>

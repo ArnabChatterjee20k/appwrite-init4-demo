@@ -1,0 +1,25 @@
+{
+  "name": "appwrite-postgres-drizzle-acid-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "A visual demo of Postgres ACID row-locking through Appwrite Postgres + Drizzle ORM",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "db:push": "drizzle-kit push"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "drizzle-orm": "^0.36.4",
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/pg": "^8.11.10",
+    "drizzle-kit": "^0.28.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}
