@@ -1,0 +1,31 @@
+{
+  "name": "meridian-help-center",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev --port 3100 --strictPort",
+    "build": "vite build",
+    "start": "node --env-file=.env dist/server/server.js",
+    "check": "tsc --noEmit",
+    "seed": "node --env-file=.env scripts/seed.mjs"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "1.170.29",
+    "@tanstack/react-start": "1.168.46",
+    "dotenv": "^17.2.1",
+    "node-appwrite": "https://pkg.vc/-/@appwrite/node-appwrite@28370b6",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.13",
+    "@types/node": "^26.2.0",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.3",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5.7.2",
+    "vite": "^7.1.5",
+    "vite-tsconfig-paths": "^5.1.4"
+  }
+}
