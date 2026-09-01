@@ -1,28 +1,28 @@
-# Appwrite Postgres + Drizzle — ACID Row-Locking Demo
+# Appwrite MySQL + Drizzle — ACID Row-Locking Demo
 
-A tiny, visual proof that Appwrite Postgres is **real Postgres**: two users try to book
+A tiny, visual proof that Appwrite MySQL is **real MySQL**: two users try to book
 the same seat, and the second one physically **blocks** until the first commits or rolls
-back. The blocking isn't faked in JavaScript — it's Postgres holding a row lock inside an
+back. The blocking isn't faked in JavaScript — it's InnoDB holding a row lock inside an
 open transaction, driven through **Drizzle ORM**.
 
 ## What it shows
 
-- `db.transaction`-style held transaction with a real **row lock** (`SELECT … FOR UPDATE`)
+- A held transaction with a real **row lock** (`SELECT … FOR UPDATE`)
 - **Atomicity**: Confirm = `COMMIT` (durable), Cancel = `ROLLBACK` (as if it never happened)
 - **Isolation**: while User A holds the lock, User B's Book request genuinely waits
 - A live transaction log showing the actual SQL, plus a Reset button
 
 ## How it works
 
-Pressing **Book** checks out a dedicated connection from the pool, runs `BEGIN` and
-`SELECT * FROM seats WHERE id = 1 FOR UPDATE`, and **keeps that transaction open across
+Pressing **Book** checks out a dedicated connection from the pool, runs `START TRANSACTION`
+and `SELECT * FROM seats WHERE id = 1 FOR UPDATE`, and **keeps that transaction open across
 requests**. The lock is released only on **Confirm** (`COMMIT`) or **Cancel** (`ROLLBACK`).
 The other user's Book runs the same `FOR UPDATE` and blocks at the database until then.
 
 ## Run it
 
 ```bash
-cp .env.example .env        # then paste your Appwrite Postgres connection string
+cp .env.example .env        # then paste your Appwrite MySQL connection string
 npm install
 npm run db:push             # create the `seats` table via Drizzle Kit
 npm run dev                 # http://localhost:3000

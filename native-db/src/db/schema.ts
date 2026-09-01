@@ -1,12 +1,10 @@
-import { pgTable, serial, text, pgEnum } from 'drizzle-orm/pg-core';
+import { mysqlTable, int, text, mysqlEnum } from 'drizzle-orm/mysql-core';
 
-// available -> nobody holds it | booked -> committed, durable
-export const seatStatus = pgEnum('seat_status', ['available', 'booked']);
-
-export const seats = pgTable('seats', {
-  id: serial('id').primaryKey(),
+export const seats = mysqlTable('seats', {
+  id: int('id').autoincrement().primaryKey(),
   label: text('label').notNull(),
-  status: seatStatus('status').notNull().default('available'),
+  // available -> nobody holds it | booked -> committed, durable
+  status: mysqlEnum('status', ['available', 'booked']).notNull().default('available'),
   bookedBy: text('booked_by'),
 });
 

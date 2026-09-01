@@ -2,8 +2,8 @@ import 'dotenv/config';
 import express from 'express';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import type { PoolClient } from 'pg';
-import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
+import type { PoolConnection } from 'mysql2/promise';
+import { drizzle, type MySql2Database } from 'drizzle-orm/mysql2';
 import { eq } from 'drizzle-orm';
 import { pool, db } from './db/index';
 import { seats } from './db/schema';
@@ -12,12 +12,13 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const SEAT_ID = 1;
 
 /**
- * A "held" transaction. When a user presses Book we take a dedicated client out
- * of the pool, BEGIN, and grab the seat row with SELECT ... FOR UPDATE. We keep
- * this client (and its open transaction, and therefore its row lock) alive
- * across HTTP requests until the user Confirms (COMMIT) or Cancels (ROLLBACK).
+ * A "held" transaction. When a user presses Book we take a dedicated connection
+ * out of the pool, START TRANSACTION, and grab the seat row with
+ * SELECT ... FOR UPDATE. We keep this connection (and its open transaction, and
+ * therefore its row lock) alive across HTTP requests until the user Confirms
+ * (COMMIT) or Cancels (ROLLBACK).
  */
-type HeldTx = { client: PoolClient; tx: NodePgDatabase };
+type HeldTx = { conn: PoolConnection; tx: MySql2Database };
 const sessions: Record<string, HeldTx> = {}; // key: 'A' | 'B'
 
 type LogEntry = { ts: number; actor: string; message: string; kind: string };
@@ -39,11 +40,11 @@ async function releaseSession(user: string, verb: 'COMMIT' | 'ROLLBACK') {
   if (!s) return;
   delete sessions[user];
   try {
-    await s.client.query(verb);
+    await s.conn.query(verb);
   } catch {
     /* connection may already be gone */
   } finally {
-    s.client.release();
+    s.conn.release();
   }
 }
 
@@ -51,7 +52,7 @@ const app = express();
 app.use(express.json());
 app.use(express.static(join(__dirname, '..', 'public')));
 
-// --- Book: BEGIN + SELECT ... FOR UPDATE, then hold the lock open ------------
+// --- Book: START TRANSACTION + SELECT ... FOR UPDATE, then hold the lock ------
 app.post('/api/book', async (req, res) => {
   const user = String(req.body.user);
   const other = user === 'A' ? 'B' : 'A';
@@ -60,16 +61,16 @@ app.post('/api/book', async (req, res) => {
     return res.json({ status: 'locked' }); // already holding
   }
 
-  addLog(user, 'pressed Book  ->  BEGIN; SELECT * FROM seats WHERE id = 1 FOR UPDATE;', 'action');
+  addLog(user, 'pressed Book  ->  START TRANSACTION; SELECT * FROM seats WHERE id = 1 FOR UPDATE;', 'action');
   if (sessions[other]) {
-    addLog(user, `is BLOCKED — waiting on the row lock held by User ${other}. Postgres will make this request wait.`, 'wait');
+    addLog(user, `is BLOCKED - waiting on the row lock held by User ${other}. MySQL will make this request wait.`, 'wait');
   }
 
-  const client = await pool.connect();
-  const tx = drizzle(client);
+  const conn = await pool.getConnection();
+  const tx = drizzle(conn, { mode: 'default' });
   try {
-    await client.query('BEGIN');
-    await client.query('SET lock_timeout = 30000'); // safety valve: 30s
+    await conn.query('SET innodb_lock_wait_timeout = 30'); // safety valve: 30s
+    await conn.query('START TRANSACTION');
 
     // This call BLOCKS at the DB level if another transaction holds the row.
     const rows = await tx.select().from(seats).where(eq(seats.id, SEAT_ID)).for('update');
@@ -77,18 +78,18 @@ app.post('/api/book', async (req, res) => {
 
     if (seat.status === 'booked') {
       // The other user committed while we were blocked. The seat is taken.
-      await client.query('ROLLBACK');
-      client.release();
+      await conn.query('ROLLBACK');
+      conn.release();
       addLog(user, `unblocked, but the seat is now booked by User ${seat.bookedBy}  ->  ROLLBACK`, 'fail');
       return res.json({ status: 'already_booked', bookedBy: seat.bookedBy });
     }
 
-    sessions[user] = { client, tx };
+    sessions[user] = { conn, tx };
     addLog(user, 'acquired the row lock - transaction stays OPEN, awaiting Confirm', 'lock');
     return res.json({ status: 'locked' });
   } catch (err) {
-    try { await client.query('ROLLBACK'); } catch { /* ignore */ }
-    client.release();
+    try { await conn.query('ROLLBACK'); } catch { /* ignore */ }
+    conn.release();
     const message = err instanceof Error ? err.message : 'unknown error';
     addLog(user, `lock attempt failed: ${message}`, 'fail');
     return res.status(500).json({ status: 'error', message });
@@ -103,8 +104,8 @@ app.post('/api/confirm', async (req, res) => {
 
   try {
     await s.tx.update(seats).set({ status: 'booked', bookedBy: user }).where(eq(seats.id, SEAT_ID));
-    await s.client.query('COMMIT');
-    s.client.release();
+    await s.conn.query('COMMIT');
+    s.conn.release();
     delete sessions[user];
     addLog(user, 'pressed Confirm  ->  UPDATE seats SET status = booked; COMMIT (durable - the lock is released)', 'commit');
     return res.json({ status: 'booked' });
@@ -131,7 +132,7 @@ app.post('/api/reset', async (_req, res) => {
   }
   await db.update(seats).set({ status: 'available', bookedBy: null }).where(eq(seats.id, SEAT_ID));
   log = [];
-  addLog('system', 'Reset — seat is available again and all open transactions were rolled back.', 'info');
+  addLog('system', 'Reset - seat is available again and all open transactions were rolled back.', 'info');
   return res.json({ status: 'ok' });
 });
 

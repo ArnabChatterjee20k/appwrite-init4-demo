@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Appwrite Postgres + Drizzle — ACID Row Locking</title>
+  <title>Appwrite MySQL + Drizzle — ACID Row Locking</title>
   <style>
     :root {
       --bg: #0b0b13;
@@ -99,8 +99,8 @@
 <body>
   <header>
     <div>
-      <h1><span class="brand">Appwrite Postgres</span> + Drizzle — ACID Row Locking</h1>
-      <div class="sub">Two users, one seat. The lock is real — Postgres does the blocking.</div>
+      <h1><span class="brand">Appwrite MySQL</span> + Drizzle — ACID Row Locking</h1>
+      <div class="sub">Two users, one seat. The lock is real — MySQL does the blocking.</div>
     </div>
     <button class="reset" id="reset">Reset</button>
   </header>
@@ -178,7 +178,7 @@
 
         if (waiting[user] && !holdsThis && !booked) {
           statusEl.innerHTML = '';
-          btns.innerHTML = `<div class="waiting"><span class="spinner"></span> Waiting for the lock… (blocked by Postgres)</div>`;
+          btns.innerHTML = `<div class="waiting"><span class="spinner"></span> Waiting for the lock… (blocked by MySQL)</div>`;
         } else if (booked) {
           const mine = seat.bookedBy === user;
           statusEl.innerHTML = mine
