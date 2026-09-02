@@ -642,8 +642,10 @@ export default class LogExplorer extends React.Component {
       setAdvanced: () => this.setState({ mode: "advanced" }),
       simpleBg: st.mode === "simple" ? "#ffffff" : "transparent",
       simpleFg: st.mode === "simple" ? "#1f1633" : "#ffffff",
+      simpleHover: st.mode === "simple" ? undefined : { background: "rgba(255,255,255,0.06)" },
       advBg: st.mode === "advanced" ? "#ffffff" : "transparent",
       advFg: st.mode === "advanced" ? "#1f1633" : "#ffffff",
+      advHover: st.mode === "advanced" ? undefined : { background: "rgba(255,255,255,0.06)" },
       advText: st.advText,
       onAdvChange: (e) => this.setState({ advText: e.target.value }),
       onAdvRun: () => {
@@ -757,7 +759,7 @@ export default class LogExplorer extends React.Component {
           }}
         >
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-            <span style={{ fontSize: 20, fontWeight: 600, letterSpacing: "0.2px" }}>DocumentsDb</span>
+            <span style={{ fontSize: 20, fontWeight: 600, letterSpacing: "0.2px" }}>DocumentsDB</span>
             <span style={{ fontFamily: MONO, fontSize: 14, color: MUTED }}>events</span>
           </div>
           <div
@@ -769,7 +771,7 @@ export default class LogExplorer extends React.Component {
               borderLeft: "1px solid #362d59",
             }}
           >
-            <span style={{ fontFamily: MONO, fontSize: 30, fontWeight: 700, color: "#ffffff" }}>
+            <span style={{ fontFamily: MONO, fontSize: 34, fontWeight: 700, color: "#ffffff" }}>
               {v.totalLabel}
             </span>
             <span
@@ -888,15 +890,7 @@ export default class LogExplorer extends React.Component {
               }}
             >
               <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-                <span
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 600,
-                    letterSpacing: "0.25px",
-                    textTransform: "uppercase",
-                    color: "#ffffff",
-                  }}
-                >
+                <span style={{ fontSize: 14, fontWeight: 600, color: "#ffffff" }}>
                   paste raw json
                 </span>
                 <span style={{ fontSize: 14, color: MUTED }}>any shape · no validation · no mapping</span>
@@ -957,15 +951,7 @@ export default class LogExplorer extends React.Component {
               }}
             >
               <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-                <span
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 600,
-                    letterSpacing: "0.25px",
-                    textTransform: "uppercase",
-                    color: "#ffffff",
-                  }}
-                >
+                <span style={{ fontSize: 14, fontWeight: 600, color: "#ffffff" }}>
                   emit preset event
                 </span>
                 <span style={{ fontSize: 14, color: MUTED }}>one realistic document</span>
@@ -1005,15 +991,7 @@ export default class LogExplorer extends React.Component {
               }}
             >
               <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-                <span
-                  style={{
-                    fontSize: 10,
-                    fontWeight: 600,
-                    letterSpacing: "0.25px",
-                    textTransform: "uppercase",
-                    color: "#ffffff",
-                  }}
-                >
+                <span style={{ fontSize: 14, fontWeight: 600, color: "#ffffff" }}>
                   bulk generate
                 </span>
                 <span style={{ fontSize: 14, color: MUTED }}>mixed event types</span>
@@ -1039,7 +1017,8 @@ export default class LogExplorer extends React.Component {
                     {b.label}
                   </Hover>
                 ))}
-                <button
+                <Hover
+                  as="button"
                   onClick={v.onStop}
                   style={{
                     fontFamily: RUBIK,
@@ -1054,9 +1033,10 @@ export default class LogExplorer extends React.Component {
                     color: PINK,
                     cursor: "pointer",
                   }}
+                  hover={{ background: "rgba(250,127,170,0.18)" }}
                 >
                   stop
-                </button>
+                </Hover>
               </div>
               <div style={{ height: 6, borderRadius: 9999, background: "#150f23", overflow: "hidden" }}>
                 <div style={{ height: "100%", background: LIME, width: v.bulkPct + "%" }} />
@@ -1241,7 +1221,8 @@ export default class LogExplorer extends React.Component {
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <button
+                <Hover
+                  as="button"
                   onClick={v.setSimple}
                   style={{
                     fontFamily: RUBIK,
@@ -1256,10 +1237,12 @@ export default class LogExplorer extends React.Component {
                     color: v.simpleFg,
                     cursor: "pointer",
                   }}
+                  hover={v.simpleHover}
                 >
                   simple
-                </button>
-                <button
+                </Hover>
+                <Hover
+                  as="button"
                   onClick={v.setAdvanced}
                   style={{
                     fontFamily: RUBIK,
@@ -1274,9 +1257,10 @@ export default class LogExplorer extends React.Component {
                     color: v.advFg,
                     cursor: "pointer",
                   }}
+                  hover={v.advHover}
                 >
                   advanced
-                </button>
+                </Hover>
                 <div style={{ flex: 1 }} />
                 {v.hasFilters && (
                   <span onClick={v.clearFilters} style={{ fontFamily: MONO, fontSize: 12, color: PINK, cursor: "pointer" }}>
@@ -1344,7 +1328,8 @@ export default class LogExplorer extends React.Component {
                       lineHeight: 1.5,
                     }}
                   />
-                  <button
+                  <Hover
+                    as="button"
                     onClick={v.onAdvRun}
                     style={{
                       fontFamily: RUBIK,
@@ -1360,9 +1345,10 @@ export default class LogExplorer extends React.Component {
                       cursor: "pointer",
                       alignSelf: "flex-start",
                     }}
+                    hover={{ background: "#f0f0f0" }}
                   >
                     run
-                  </button>
+                  </Hover>
                 </div>
               )}
 
@@ -1505,7 +1491,7 @@ export default class LogExplorer extends React.Component {
                         gap: 12,
                         alignItems: "start",
                         padding: "10px 18px",
-                        borderBottom: "1px solid rgba(54,45,89,0.6)",
+                        borderBottom: "1px solid #362d59",
                         cursor: "pointer",
                         background: r.bg,
                         animation: r.anim,

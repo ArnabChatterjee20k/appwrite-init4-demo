@@ -6,100 +6,174 @@
   <title>Appwrite MySQL + Drizzle — ACID Row Locking</title>
   <style>
     :root {
+      /* surfaces */
       --bg: #0b0b13;
       --panel: #16161f;
       --panel-2: #1d1d29;
+      --surface-inset: #08080e;
+      --chip: #262635;
       --border: #2a2a38;
+      --border-strong: #363648;
+      /* text */
       --text: #e8e8ef;
+      --text-2: #cfcfe0;
       --muted: #8a8a9a;
+      --text-dim: #55556a;
+      --text-faint: #44445a;
+      /* accents */
       --pink: #fd366e;
+      --pink-hover: #ff4f81;
       --green: #10b981;
+      --green-hover: #17c993;
+      --green-ink: #04140d;
       --amber: #f59e0b;
+      --amber-soft: rgba(245, 158, 11, .3);
       --blue: #3b82f6;
+      --red: #f87171;
+      /* type */
       --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+      --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      /* spacing scale (4px base) */
+      --s-1: 4px; --s-2: 8px; --s-3: 12px; --s-4: 16px; --s-5: 24px; --s-6: 32px;
+      /* radius scale */
+      --r-sm: 8px; --r-md: 10px; --r-lg: 14px; --r-pill: 999px;
+      /* elevation */
+      --shadow-1: 0 1px 2px rgba(0, 0, 0, .3);
+      --shadow-2: 0 8px 24px rgba(0, 0, 0, .35);
+      --focus: 0 0 0 2px var(--bg), 0 0 0 4px var(--pink);
     }
     * { box-sizing: border-box; }
     body {
       margin: 0; background: var(--bg); color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: var(--sans);
+      font-size: 14px; line-height: 1.5;
       min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
     }
+
+    /* --- header ------------------------------------------------------------ */
     header {
-      padding: 20px 24px; border-bottom: 1px solid var(--border);
-      display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+      padding: var(--s-4) var(--s-5); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      gap: var(--s-4); flex-wrap: wrap;
     }
-    header h1 { font-size: 17px; margin: 0; font-weight: 650; }
-    header .sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+    .titles { display: flex; flex-direction: column; gap: var(--s-1); }
+    header h1 {
+      font-size: 18px; margin: 0; font-weight: 650; letter-spacing: -.01em;
+      display: flex; align-items: center; gap: var(--s-2); flex-wrap: wrap;
+    }
+    header .sub { color: var(--muted); font-size: 13px; }
     .brand { color: var(--pink); }
+    .badge {
+      font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .04em;
+      color: var(--pink); background: rgba(253, 54, 110, .12);
+      border: 1px solid rgba(253, 54, 110, .3);
+      padding: 2px var(--s-2); border-radius: var(--r-pill); text-transform: uppercase;
+    }
     .reset {
       background: transparent; color: var(--text); border: 1px solid var(--border);
-      padding: 9px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600;
+      padding: 9px var(--s-4); border-radius: var(--r-sm); cursor: pointer;
+      font-size: 13px; font-weight: 600; font-family: inherit;
+      transition: border-color .15s, color .15s, background .15s;
     }
-    .reset:hover { border-color: var(--pink); color: var(--pink); }
-    main { max-width: 1100px; margin: 0 auto; padding: 24px; }
-    .panes { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .reset:hover { border-color: var(--pink); color: var(--pink); background: rgba(253, 54, 110, .06); }
+    .reset:focus-visible { outline: none; box-shadow: var(--focus); }
+
+    /* --- layout ------------------------------------------------------------ */
+    main { max-width: 1100px; margin: 0 auto; padding: var(--s-5); }
+    .panes { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-4); }
     @media (max-width: 720px) { .panes { grid-template-columns: 1fr; } }
+
+    /* --- pane -------------------------------------------------------------- */
     .pane {
-      background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
-      padding: 22px; display: flex; flex-direction: column; gap: 16px; min-height: 260px;
+      background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-lg);
+      padding: var(--s-5); display: flex; flex-direction: column; gap: var(--s-4);
+      min-height: 260px; box-shadow: var(--shadow-1);
     }
-    .pane h2 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 8px; }
-    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); }
-    .pane.A .dot { background: var(--blue); }
-    .pane.B .dot { background: var(--pink); }
+    .pane h2 {
+      margin: 0; font-size: 15px; font-weight: 620;
+      display: flex; align-items: center; gap: var(--s-2);
+    }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+    .pane.A .dot { background: var(--blue); box-shadow: 0 0 0 3px rgba(59, 130, 246, .15); }
+    .pane.B .dot { background: var(--pink); box-shadow: 0 0 0 3px rgba(253, 54, 110, .15); }
+
+    /* --- seat card --------------------------------------------------------- */
     .seat {
-      display: flex; align-items: center; justify-content: center; gap: 10px;
-      background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
-      padding: 18px; font-size: 14px;
+      display: flex; align-items: center; justify-content: center; gap: var(--s-3);
+      background: var(--panel-2); border: 1px solid var(--border); border-radius: var(--r-md);
+      padding: var(--s-4); font-size: 14px; color: var(--muted);
     }
+    .seat [data-seatlabel] { color: var(--text); font-weight: 550; }
     .seat .chip {
-      font-family: var(--mono); font-weight: 700; font-size: 20px;
-      width: 44px; height: 44px; display: grid; place-items: center; border-radius: 8px;
-      background: #262635; border: 1px solid var(--border);
+      font-family: var(--mono); font-weight: 700; font-size: 20px; color: var(--text);
+      width: 44px; height: 44px; display: grid; place-items: center; border-radius: var(--r-sm);
+      background: var(--chip); border: 1px solid var(--border-strong);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04);
     }
-    .status { font-size: 13px; color: var(--muted); min-height: 20px; line-height: 1.5; }
-    .status strong { color: var(--text); }
-    .btns { display: flex; gap: 10px; margin-top: auto; }
+
+    /* --- status + buttons -------------------------------------------------- */
+    .status {
+      font-size: 13px; color: var(--muted); line-height: 1.5;
+      min-height: calc(1.5em * 2);
+    }
+    .status strong { color: var(--text); font-weight: 620; }
+    .btns { display: flex; gap: var(--s-2); margin-top: auto; }
     button.act {
-      flex: 1; padding: 12px; border-radius: 9px; cursor: pointer; font-size: 14px; font-weight: 650;
-      border: 1px solid transparent; transition: opacity .15s;
+      flex: 1; padding: 12px; border-radius: var(--r-sm); cursor: pointer;
+      font-size: 14px; font-weight: 650; font-family: inherit;
+      border: 1px solid transparent;
+      transition: background .15s, border-color .15s, color .15s, transform .06s, opacity .15s;
     }
     button.act:disabled { opacity: .4; cursor: not-allowed; }
+    button.act:focus-visible { outline: none; box-shadow: var(--focus); }
+    button.act:active:not(:disabled) { transform: translateY(1px); }
     .book { background: var(--pink); color: #fff; }
-    .confirm { background: var(--green); color: #04140d; }
+    .book:hover:not(:disabled) { background: var(--pink-hover); }
+    .confirm { background: var(--green); color: var(--green-ink); }
+    .confirm:hover:not(:disabled) { background: var(--green-hover); }
     .cancel { background: transparent; color: var(--text); border-color: var(--border); }
-    .waiting { display: flex; align-items: center; gap: 10px; color: var(--amber); font-size: 13px; font-weight: 600; }
+    .cancel:hover:not(:disabled) { border-color: var(--pink); color: var(--pink); background: rgba(253, 54, 110, .06); }
+
+    /* --- waiting / locked states ------------------------------------------ */
+    .waiting { display: flex; align-items: center; gap: var(--s-2); color: var(--amber); font-size: 13px; font-weight: 600; }
+    .locked-hint { color: var(--amber); font-weight: 600; }
     .spinner {
-      width: 15px; height: 15px; border: 2px solid rgba(245,158,11,.3);
+      width: 15px; height: 15px; border: 2px solid var(--amber-soft);
       border-top-color: var(--amber); border-radius: 50%; animation: spin .7s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .logwrap { margin-top: 22px; }
-    .logwrap h3 { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin: 0 0 10px; }
+
+    /* --- transaction log --------------------------------------------------- */
+    .logwrap { margin-top: var(--s-5); }
+    .logwrap h3 {
+      font-size: 12px; color: var(--muted); text-transform: uppercase;
+      letter-spacing: .08em; font-weight: 650; margin: 0 0 var(--s-3);
+    }
     .log {
-      background: #08080e; border: 1px solid var(--border); border-radius: 12px;
-      padding: 14px 16px; font-family: var(--mono); font-size: 12.5px; line-height: 1.7;
+      background: var(--surface-inset); border: 1px solid var(--border); border-radius: var(--r-md);
+      padding: var(--s-3) var(--s-4); font-family: var(--mono); font-size: 12.5px; line-height: 1.7;
       height: 260px; overflow-y: auto;
     }
-    .log .row { display: flex; gap: 10px; padding: 2px 0; }
-    .log .t { color: #55556a; flex-shrink: 0; }
+    .log .row { display: flex; gap: var(--s-3); padding: 2px 0; }
+    .log .t { color: var(--text-dim); flex-shrink: 0; }
     .log .who { flex-shrink: 0; font-weight: 700; width: 64px; }
     .who.A { color: var(--blue); } .who.B { color: var(--pink); } .who.system { color: var(--muted); }
-    .msg.action { color: #cfcfe0; }
+    .msg.action { color: var(--text-2); }
     .msg.lock { color: var(--green); }
     .msg.wait { color: var(--amber); }
     .msg.commit { color: var(--green); }
-    .msg.rollback, .msg.fail { color: #f87171; }
+    .msg.rollback, .msg.fail { color: var(--red); }
     .msg.info { color: var(--muted); }
-    .empty { color: #44445a; }
-    .hint { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: 16px; }
+    .empty { color: var(--text-faint); }
+    .hint { text-align: center; color: var(--muted); font-size: 12.5px; margin-top: var(--s-4); line-height: 1.6; }
     code { font-family: var(--mono); color: var(--pink); }
   </style>
 </head>
 <body>
   <header>
-    <div>
-      <h1><span class="brand">Appwrite MySQL</span> + Drizzle — ACID Row Locking</h1>
+    <div class="titles">
+      <h1><span class="brand">Appwrite MySQL</span> + Drizzle <span class="badge">ACID</span></h1>
       <div class="sub">Two users, one seat. The lock is real — MySQL does the blocking.</div>
     </div>
     <button class="reset" id="reset">Reset</button>
@@ -134,37 +208,41 @@
 
   <script>
     const waiting = { A: false, B: false }; // is this pane's Book request in flight & blocked?
-
-    async function api(path, user) {
-      const res = await fetch('/api/' + path, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user }),
-      });
-      return res.json();
-    }
-
-    async function onBook(user) {
-      waiting[user] = true;
-      render(lastState); // show spinner immediately
-      try {
-        await api('book', user); // may hang here while blocked by the other tx
-      } finally {
-        waiting[user] = false;
-        await poll();
-      }
-    }
-
-    async function onConfirm(user) { await api('confirm', user); await poll(); }
-    async function onCancel(user)  { await api('cancel', user);  await poll(); }
-
-    document.getElementById('reset').onclick = async () => {
-      waiting.A = waiting.B = false;
-      await fetch('/api/reset', { method: 'POST' });
-      await poll();
-    };
-
     let lastState = { seat: { status: 'available' }, holders: {}, log: [] };
+
+    // --- WebSocket transport: the server pushes state on every change --------
+    let ws;
+    function send(msg) {
+      if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(msg));
+    }
+
+    function connect() {
+      ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`);
+      ws.onmessage = (ev) => {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === 'state') {
+          render(msg);
+        } else if (msg.type === 'bookResult') {
+          // Our Book resolved (locked, already_booked, or error) — clear the spinner.
+          waiting[msg.user] = false;
+          render(lastState);
+        }
+      };
+      ws.onclose = () => setTimeout(connect, 700); // reconnect if the server restarts
+    }
+
+    function onBook(user) {
+      waiting[user] = true;
+      render(lastState); // show spinner immediately; server pushes state as it progresses
+      send({ type: 'book', user });
+    }
+    function onConfirm(user) { send({ type: 'confirm', user }); }
+    function onCancel(user)  { send({ type: 'cancel', user }); }
+
+    document.getElementById('reset').onclick = () => {
+      waiting.A = waiting.B = false;
+      send({ type: 'reset' });
+    };
 
     function render(state) {
       lastState = state;
@@ -174,6 +252,7 @@
         const statusEl = pane.querySelector('[data-status]');
         const btns = pane.querySelector('[data-btns]');
         const holdsThis = state.holders[user];
+        const other = user === 'A' ? 'B' : 'A';
         const booked = seat.status === 'booked';
 
         if (waiting[user] && !holdsThis && !booked) {
@@ -190,6 +269,9 @@
           btns.innerHTML =
             `<button class="act confirm" data-a="confirm">Confirm (COMMIT)</button>` +
             `<button class="act cancel" data-a="cancel">Cancel (ROLLBACK)</button>`;
+        } else if (state.holders[other]) {
+          statusEl.innerHTML = '<span class="locked-hint">User ' + other + ' is holding the row lock — pressing Book will wait until they Confirm or Cancel.</span>';
+          btns.innerHTML = `<button class="act book" data-a="book">Book</button>`;
         } else {
           statusEl.innerHTML = `Seat is available. Press Book to open a transaction.`;
           btns.innerHTML = `<button class="act book" data-a="book">Book</button>`;
@@ -216,15 +298,7 @@
       el.scrollTop = el.scrollHeight;
     }
 
-    async function poll() {
-      try {
-        const state = await (await fetch('/api/state')).json();
-        render(state);
-      } catch { /* server restarting */ }
-    }
-
-    poll();
-    setInterval(poll, 700);
+    connect();
   </script>
 </body>
 </html>
